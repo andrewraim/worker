@@ -1,13 +1,18 @@
 #!/usr/bin/env python3
 import os
+import sys
+import getopt
 import hashlib
 import time
 import platform
 import logging
 import subprocess
 import re
+from datetime import datetime
 
-"""
+VERSION = "%s v0.1" % sys.argv[0]
+
+USAGE = """
 This script loops through the paths in the list `basepaths` and searches for
 subdirectories whose names match the corresponding pattern in `patterns`. For
 each matching directory, enter that directory and run the command specified
@@ -21,14 +26,70 @@ directory. This requires python3.
 
 Entries in patterns are strings interpreted as Python Regular Expressions. See
 the syntax at <https://docs.python.org/3/library/re.html>
-"""
 
-# ---- Begin config -----
-# TBD: Make these CLI arguments
-basepaths = ["./"]
-patterns = ['sim_laplace(.*)_sigma(.*)']
-cmd = ['R', 'CMD', 'BATCH', 'launch.R']
-# ---- End config -----
+Usage: python3 %s [-v] [-h] | -b <path> [-b <path2> ...] -p <pattern>
+           [-p <pattern2> ...] -c <cmd> --maxjobs=<maxjobs> --maxhours=<maxhours>
+	-v or --version   print the version and exit
+	-h or --help      print usage and exit
+	-b or --basepath  include path in the list of basepaths
+	-p or --pattern   include pattern in the list of patterns
+	-c or --cmd       command to launch each job
+	--maxjobs         max # of jobs to run before stopping (default: unlimited)
+	--maxhours        max # of hours to run before exiting (default: unlimited)
+""" % sys.argv[0]
+
+# ---- Begin parsing command line args -----
+basepaths = []
+patterns = []
+cmd = []
+max_jobs = sys.maxsize
+max_hours = sys.maxsize
+
+def parse():
+	longopts = ["version", "help", "basepath=", "pattern=", "cmd=", "maxjobs=",
+		"maxhours="]
+	options, arguments = getopt.getopt(
+		sys.argv[1:], # Arguments
+		'vhb:p:c:',   # Short option definitions
+		longopts)     # Long option definitions
+	for o, a in options:
+		if o in ("-v", "--version"):
+			print(VERSION)
+			sys.exit()
+		if o in ("-h", "--help"):
+			print(USAGE)
+			sys.exit()
+		if o in ("-b", "--basepath"):
+			basepaths.append(a)
+		if o in ("-p", "--pattern"):
+			patterns.append(a)
+		if o in ("-c", "--cmd"):
+			# We need present the command as a list of tokens later when we
+			# invoke it with subprocess. This might not be the most robust way
+			# to take the input, but let's see how well it works.
+			for tok in a.split(' '):
+				cmd.append(tok)
+		if o in ("--maxjobs"):
+			maxjobs = a
+		if o in ("--maxhours"):
+			maxhours = a
+	try:
+		operands = [int(arg) for arg in arguments]
+	except ValueError:
+		raise SystemExit(USAGE)
+	if len(basepaths) == 0:
+		raise RuntimeError("Must provide at least one basepath")
+	if len(patterns) == 0:
+		raise RuntimeError("Must provide at least one pattern")
+	if len(cmd) == 0:
+		raise RuntimeError("Must provide a command")
+
+parse()
+# ---- End parsing command line args -----
+
+# Take now to be the starting time
+start_time = datetime.now()
+elapsed_hours = 0
 
 # Set up logging
 logging.basicConfig(
@@ -45,6 +106,7 @@ logging.info("Worker ID: %s" % worker_id)
 
 # Get the current working directory
 homepath = os.getcwd()
+logging.info("Working directory: %s" % homepath)
 
 # Throw an exception if L != len(patterns)
 L = len(basepaths)
@@ -53,7 +115,9 @@ if L != len(patterns):
 	raise RuntimeError(msg % (L, len(patterns)))
 
 keep_looping = True
+processed_jobs = 0
 
+# ----- Finally, start the main loop -----
 while keep_looping:
 	# Reset this to False. We need to find least one new unlocked file later
 	# to set this to True, otherwise we'll stop looping.
@@ -103,11 +167,26 @@ while keep_looping:
 					stderr = os.path.join(path, "worker.err")
 					with open(stdout, 'w') as g, open(stderr, 'w') as h:
 						subprocess.call(cmd, stdout = g, stderr = h)
+
+					# Increment the number of jobs we have processed
+					processed_jobs += 1
 			except FileExistsError:
 				logging.warn("Could not lock: %s" % lockfile)
 			finally:
 				# Change back to the home path
 				os.chdir(homepath)
+
+			elapsed_hours = (datetime.now() - start_time).total_seconds() / 60**2
+			logging.info("Processed %d jobs so far" % processed_jobs)
+			logging.info("Ran for %f hours so far" % elapsed_hours)
+
+			if processed_jobs >= max_jobs:
+				logging.info("Reached limit of %d jobs" % max_jobs)
+				break
+
+			if elapsed_hours >= max_hours:
+				logging.info("Reached limit of %d hours" % max_hours)
+				break
 
 logging.info("Done")
 
