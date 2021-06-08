@@ -37,3 +37,9 @@ vignettes/*.pdf
 
 # R Environment Variables
 .Renviron
+
+# Custom
+/examples/regression-sim/sigma*
+/examples/regression-sim/xmat-n*.rds
+*.Rout
+
