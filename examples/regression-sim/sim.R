@@ -3,15 +3,13 @@
 # defined.
 source("../util.R")
 
+rep_sleep_time = 0.01
+
 # ----- Check for arguments set by the launch script -----
 stopifnot(exists("beta_true"))
 stopifnot(exists("sigma_true"))
 stopifnot(exists("xmat_file"))
 stopifnot(exists("N_sim"))
-stopifnot(exists("mcmc_reps"))
-stopifnot(exists("mcmc_burn"))
-stopifnot(exists("mcmc_thin"))
-stopifnot(exists("report_period"))
 
 # ----- Set up data that will be fixed through simulation -----
 X = readRDS(xmat_file)
@@ -22,17 +20,28 @@ mu_true = as.numeric(X %*% beta_true)
 res_lm = list()
 res_gibbs = list()
 
+eye = diag(nrow = n)
+
+
 for (s in 1:N_sim) {
-	logger("*** Simulation %d ***\n", s)
+	logger("Rep %d\n", s)
 
 	# Generate data
 	y = rnorm(n, mu_true, sigma_true)
 
-	# Fit lm
-	lm_out = lm(y ~ X - 1)
-	res_lm[[s]] = lm_out
+	# Compute MLE in closed form
+	# Try to avoid making n x n matrices
+	XtX = t(X) %*% X
+	Xty = crossprod(X, y)
+	Q = sum(y^2) - t(Xty) %*% solve(XtX, Xty)
+	beta_hat = solve(XtX, Xty)
+	sigma2_hat = Q / n
 
-	# TBD: Run Gibbs sampler
+	res_lm[[s]] = c(beta_hat, sigma2_hat)
+
+	# A sleep is here to give the sense of a more computationally demanding
+	# simulation
+	Sys.sleep(rep_sleep_time)
 }
 
 save.image("results.Rdata")

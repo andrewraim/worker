@@ -1,3 +1,5 @@
+source("util.R")
+
 sigma_levels = c(1, 2, 3)
 n_levels = c(50, 100, 200)
 
@@ -23,16 +25,14 @@ for (idx_n in seq_along(n_levels)) {
 	load(ff, envir = env)
 
 	# Compute summary for this run
+	d = env$d
 	N_sim = env$N_sim
 	beta_true = env$beta_true
 	sigma2_true = env$sigma_true^2
 	theta_true = c(beta_true, sigma2_true)
+	theta_mat = matrix(unlist(env$res_lm), N_sim, d+1, byrow = TRUE)
 
-	beta_mat = matrix(unlist(Map(coef, env$res_lm)), N_sim, 2, byrow = TRUE)
-	sigma2 = unlist(Map(sigma, env$res_lm))^2
-	theta_mat = cbind(beta_mat, sigma2)
-
-	diff = theta_mat - matrix(theta_true, N_sim, 3, byrow = TRUE)
+	diff = theta_mat - matrix(theta_true, N_sim, d+1, byrow = TRUE)
 	mse = mean(rowSums(diff^2))
 	sim_res[idx_sigma, idx_n] = mse
 	rm(env)

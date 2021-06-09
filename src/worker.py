@@ -152,27 +152,33 @@ while keep_looping:
 			# be more work to do. Set keep_looping to True
 			keep_looping = True
 
-			# There is no lockfile, so see if we can acquire it ourselves
+			# There is no lockfile, so see if we can acquire it ourselves.
+			# If we can, leave our ID and close the lockfile before doing any
+			# actual work.
+			acquired_lock = False
 			try:
 				with open(lockfile, 'x') as f:
-					f.write("Reserved by worker: %s" % worker_id)
-					logging.info("Lockfile in %s acquired" % subdir)
-
-					# Now change to the directory of the job
-					path = os.path.join(basepath, subdir)
-					os.chdir(path)
-
-					# Run the job. Make sure to save stdout and stderr steams
-					stdout = os.path.join(path, "worker.out")
-					stderr = os.path.join(path, "worker.err")
-					with open(stdout, 'w') as g, open(stderr, 'w') as h:
-						subprocess.call(cmd, stdout = g, stderr = h)
-
-					# Increment the number of jobs we have processed
-					processed_jobs += 1
+					f.write("Reserved by worker: %s\n" % worker_id)
+					acquired_lock = True
 			except FileExistsError:
 				logging.warn("Could not lock: %s" % lockfile)
-			finally:
+
+			if acquired_lock:
+				logging.info("Lockfile in %s acquired" % subdir)
+
+				# Now change to the directory of the job
+				path = os.path.join(basepath, subdir)
+				os.chdir(path)
+
+				# Run the job. Make sure to save stdout and stderr steams
+				stdout = os.path.join(path, "worker.out")
+				stderr = os.path.join(path, "worker.err")
+				with open(stdout, 'w') as g, open(stderr, 'w') as h:
+					subprocess.call(cmd, stdout = g, stderr = h)
+
+				# Increment the number of jobs we have processed
+				processed_jobs += 1
+
 				# Change back to the home path
 				os.chdir(homepath)
 
