@@ -161,6 +161,8 @@ $ cat sigma2_n1/worker.lock
 Reserved by worker: 75e1421210cc92d62e5403313cab33f0
 ```
 
+When working on a remote server, it may not be possible to keep a persistent session open for long periods that may be needed for a simulation study. In a setting where a scheduler such as [PBS](https://www.openpbs.org) or [Slurm](https://slurm.schedmd.com) is used to allocate jobs to compute nodes, each worker may be submitted as a job to the scheduler. In an environment without a scheduler, running workers via a terminal multiplexer such as [tmux](https://tmux.github.io) or [GNU screen](https://www.gnu.org/software/screen) allows terminal sessions to detach and reattach as needed to provide some persistence.
+
 After the simulation is complete, we may run `analyze.R` to extract the estimates from each folder and build a table of MSEs.
 
 ```r
