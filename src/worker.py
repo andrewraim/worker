@@ -34,8 +34,8 @@ Usage: python3 %s [-v] [-h] | -b <path> [-b <path2> ...] -p <pattern>
 	-b or --basepath  include path in the list of basepaths
 	-p or --pattern   include pattern in the list of patterns
 	-c or --cmd       command to launch each job
-	--maxjobs         max # of jobs to run before stopping (default: unlimited)
-	--maxhours        max # of hours to run before exiting (default: unlimited)
+	--maxjobs         max # of jobs to run (default: unlimited)
+	--maxhours        max # of hours to run, can be floating point (default: unlimited)
 """ % sys.argv[0]
 
 # ---- Begin parsing command line args -----
@@ -43,48 +43,48 @@ basepaths = []
 patterns = []
 cmd = []
 max_jobs = sys.maxsize
-max_hours = sys.maxsize
+max_hours = float('inf')
 
-def parse():
-	longopts = ["version", "help", "basepath=", "pattern=", "cmd=", "maxjobs=",
-		"maxhours="]
-	options, arguments = getopt.getopt(
-		sys.argv[1:], # Arguments
-		'vhb:p:c:',   # Short option definitions
-		longopts)     # Long option definitions
-	for o, a in options:
-		if o in ("-v", "--version"):
-			print(VERSION)
-			sys.exit()
-		if o in ("-h", "--help"):
-			print(USAGE)
-			sys.exit()
-		if o in ("-b", "--basepath"):
-			basepaths.append(a)
-		if o in ("-p", "--pattern"):
-			patterns.append(a)
-		if o in ("-c", "--cmd"):
-			# We need present the command as a list of tokens later when we
-			# invoke it with subprocess. This might not be the most robust way
-			# to take the input, but let's see how well it works.
-			for tok in a.split(' '):
-				cmd.append(tok)
-		if o in ("--maxjobs"):
-			maxjobs = a
-		if o in ("--maxhours"):
-			maxhours = a
-	try:
-		operands = [int(arg) for arg in arguments]
-	except ValueError:
-		raise SystemExit(USAGE)
-	if len(basepaths) == 0:
-		raise RuntimeError("Must provide at least one basepath")
-	if len(patterns) == 0:
-		raise RuntimeError("Must provide at least one pattern")
-	if len(cmd) == 0:
-		raise RuntimeError("Must provide a command")
-
-parse()
+longopts = ["version", "help", "basepath=", "pattern=", "cmd=", "maxjobs=",
+	"maxhours="]
+options, arguments = getopt.getopt(
+	sys.argv[1:], # Arguments
+	'vhb:p:c:',   # Short option definitions
+	longopts)     # Long option definitions
+for o, a in options:
+	if o in ("-v", "--version"):
+		print(VERSION)
+		sys.exit()
+	if o in ("-h", "--help"):
+		print(USAGE)
+		sys.exit()
+	if o in ("-b", "--basepath"):
+		basepaths.append(a)
+	if o in ("-p", "--pattern"):
+		patterns.append(a)
+	if o in ("-c", "--cmd"):
+		# We need present the command as a list of tokens later when we
+		# invoke it with subprocess. This might not be the most robust way
+		# to take the input, but let's see how well it works.
+		for tok in a.split(' '):
+			cmd.append(tok)
+	if o in ("--maxjobs"):
+		max_jobs = int(a)
+	if o in ("--maxhours"):
+		max_hours = float(a)
+try:
+	operands = [int(arg) for arg in arguments]
+except ValueError:
+	raise SystemExit(USAGE)
+if len(basepaths) == 0:
+	print(USAGE)
+	raise RuntimeError("Must provide at least one basepath")
+if len(patterns) == 0:
+	print(USAGE)
+	raise RuntimeError("Must provide at least one pattern")
+if len(cmd) == 0:
+	print(USAGE)
+	raise RuntimeError("Must provide a command")
 # ---- End parsing command line args -----
 
 # Take now to be the starting time
@@ -177,16 +177,16 @@ while keep_looping:
 				os.chdir(homepath)
 
 			elapsed_hours = (datetime.now() - start_time).total_seconds() / 60**2
-			logging.info("Processed %d jobs so far" % processed_jobs)
-			logging.info("Ran for %f hours so far" % elapsed_hours)
+			logging.info("Processed %d jobs and worked for %f total hours so far" %
+				(processed_jobs, elapsed_hours))
 
 			if processed_jobs >= max_jobs:
 				logging.info("Reached limit of %d jobs" % max_jobs)
-				break
+				exit(0)
 
 			if elapsed_hours >= max_hours:
-				logging.info("Reached limit of %d hours" % max_hours)
-				break
+				logging.info("Reached limit of %f hours" % max_hours)
+				exit(0)
 
 logging.info("Done")
 
