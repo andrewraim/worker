@@ -3,7 +3,7 @@
 # defined.
 source("../util.R")
 
-rep_sleep_time = 0.01
+rep_sleep_time = 1
 
 # ----- Check for arguments set by the launch script -----
 stopifnot(exists("beta_true"))
