@@ -1,10 +1,9 @@
-# Assume that this script has been invoked from the launch script. Necessary
-# libraries should have already been loaded and variables should have been
-# defined.
+# Assume that this script has been invoked from the launch script.
+
 source("../util.R")
 
 set.seed(1234)
-rep_sleep_sec = 0.01
+rep_sleep_sec = 1
 
 # ----- Check for arguments set by the launch script -----
 stopifnot(exists("beta_true"))
