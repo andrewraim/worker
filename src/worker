@@ -10,7 +10,7 @@ import subprocess
 import re
 from datetime import datetime
 
-VERSION = "%s v0.1" % sys.argv[0]
+VERSION = "%s v0.2" % sys.argv[0]
 
 USAGE = """
 This script loops through the paths in the list `basepaths` and searches for
@@ -22,12 +22,12 @@ Multiple workers are allowed to run on the same set of `basepaths` and
 `patterns`. We use a simple lockfile mechanism to avoid race conditions where
 more than one worker is executing a run. To take responsibility for a directory,
 a worker must create a file called `worker.lock` using "x" access mode in that
-directory. This requires python3.
+directory. This requires Python 3.3 or higher.
 
 Entries in patterns are strings interpreted as Python Regular Expressions. See
 the syntax at <https://docs.python.org/3/library/re.html>
 
-Usage: python3 %s [-v] [-h] | -b <path> [-b <path2> ...] -p <pattern>
+Usage: %s [-v] [-h] | -b <path> [-b <path2> ...] -p <pattern>
            [-p <pattern2> ...] -c <cmd> --maxjobs=<maxjobs> --maxhours=<maxhours>
 	-v or --version   print the version and exit
 	-h or --help      print usage and exit
@@ -36,7 +36,7 @@ Usage: python3 %s [-v] [-h] | -b <path> [-b <path2> ...] -p <pattern>
 	-c or --cmd       command to launch each job
 	--maxjobs         max # of jobs to run (default: unlimited)
 	--maxhours        max # of hours to run, can be floating point (default: unlimited)
-""" % sys.argv[0]
+""" % os.path.basename(sys.argv[0])
 
 # ---- Begin parsing command line args -----
 basepaths = []
@@ -93,6 +93,7 @@ elapsed_hours = 0
 
 # Set up logging
 logging.basicConfig(
+	stream = sys.stdout,
 	format = '%(asctime)s - %(message)s',
 	level = logging.INFO,
 	datefmt = '%Y-%m-%d %H:%M:%S')
@@ -106,7 +107,7 @@ logging.info("Worker ID: %s" % worker_id)
 
 # Get the current working directory
 homepath = os.getcwd()
-logging.info("Working directory: %s" % homepath)
+logging.info("Home path: %s" % homepath)
 
 # Throw an exception if L != len(patterns)
 L = len(basepaths)
@@ -119,8 +120,9 @@ processed_jobs = 0
 
 # ----- Finally, start the main loop -----
 while keep_looping:
-	# Reset this to False. We need to find least one new unlocked file later
-	# to set this to True, otherwise we'll stop looping.
+	# We will stop looping only if we make a full pass without finding any new
+	# work. This ensures that if new work folders are added while we are
+	# running, we will go back and work on them before exiting.
 	keep_looping = False
 	logging.info("Searching %d basepaths for available work" % L)
 
@@ -171,9 +173,7 @@ while keep_looping:
 				os.chdir(path)
 
 				# Run the job. Make sure to save stdout and stderr steams
-				stdout = os.path.join(path, "worker.out")
-				stderr = os.path.join(path, "worker.err")
-				with open(stdout, 'w') as g, open(stderr, 'w') as h:
+				with open("worker.out", 'w') as g, open("worker.err", 'w') as h:
 					subprocess.call(cmd, stdout = g, stderr = h)
 
 				# Increment the number of jobs we have processed

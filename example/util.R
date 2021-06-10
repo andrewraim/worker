@@ -9,11 +9,6 @@ logger = function(msg, ...)
 	cat(sys.time, "-", sprintf(msg, ...))
 }
 
-fprintf = function(file, msg, ...)
-{
-	cat(sprintf(msg, ...), file = file)
-}
-
 print_vector = function(x)
 {
 	sprintf("c(%s)", paste(x, collapse = ","))

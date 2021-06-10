@@ -1,0 +1,12 @@
+#!/bin/bash
+#PBS -N example
+#PBS -l select=1:ncpus=1:mem=1gb
+#PBS -l walltime=1:00:00
+#PBS -o qsub.out
+#PBS -e qsub.err
+
+# Example of launching a worker through PBS
+
+cd $PBS_O_WORKDIR
+
+../src/worker -b . -p "sigma(.*)_n(.*)" -c 'R CMD BATCH launch.R'
