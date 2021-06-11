@@ -87,7 +87,7 @@ The following scripts are used to implement our workflow for the regression simu
 
 - `gen.R` generates the folder structure and creates a `launch.R` script in  each folder.
 - `util.R` contains several utility functions used by other scripts.
-- `sim.R` contains the main logic to run each level of the simulation. The program sleeps for a few moments after each repetition to give the feeling of a more computationally demanding simulation.
+- `sim.R` contains the main logic to run one level of the simulation. At the beginning, it checks to ensure that variables `N_sim`, `beta_true`, `sigma_true`, and `xmat_file` have been set. A sleep command is issued after each repetition to give the feeling of a more computationally demanding simulation.
 - `launch.R` is responsible for setting variables specific to the simulation level and running `sim.R`.
 - `worker` is a Python script that seeks simulation levels which have not yet run and attempts to run them.
 - `analyze.R` handles post-processing after the simulation is completed. A table of MSEs is presented as the final result.
