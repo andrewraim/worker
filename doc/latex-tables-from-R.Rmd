@@ -1,0 +1,94 @@
+---
+title: "One Method to Generate Tables in R"
+author: Andrew Raim^[<andrew.raim@gmail.com>]
+output: 
+  pdf_document:
+    highlight: pygments
+    number_sections: true
+    toc: false
+    extra_dependencies:
+      common: null
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  prompt = TRUE,
+  comment = ""
+)
+```
+
+```{r setup, include = FALSE}
+set.seed(1234)
+```
+
+# Introduction
+\label{sec:intro}
+
+When running a simulation or other computational study, it is often necessary to take R output and format it into a Latex table(s). Table entries must be formatted correctly, ampersands placed between elements to distinguish columns, and newlines added to the end of each line. Often, this must be repeated multiple times as changes are made to the study to correct mistakes or investigate unexpected findings. This process can become extremely tedious and time consuming if done manually.
+
+Fortunately, there are many tools in R which can help generate a formatted table which can be inserted directly into a Latex document. Some of these tools are compatible with Rmarkdown so that tables can be generated when compiling a document.
+
+In this brief document, we will consider one possible workflow using the [Tidyverse](https://www.tidyverse.org) framework to manipulate tables, `sprintf` to format table the entries, and [`kable`](https://bookdown.org/yihui/rmarkdown-cookbook/kable.html) to generate latex tables. In addition to producing a clean table in our typeset result, we would also like our generated Latex code to be tidy.
+
+First let us load the necessary packages.
+
+```{r, echo = TRUE, warning = FALSE, message = FALSE}
+library(knitr)
+library(dplyr)
+library(tibble)
+library(stringr)
+library(kableExtra)
+```
+
+As an example, we will generate a Latex table for the first 5 entries of the `mtcars` dataset.
+
+- The `sprintf` function offers fine-level control in formatting numbers and text and strings. We specify the format of each column.
+- The `tibble::rownames_to_column` function includes row labels in the table as a proper column.
+- The `stringr::str_pad` function is used to pad strings in a given column so that they are nicely aligned in the generated Latex code.
+- By default, leading and trailing spaces are ignored in `knitr::kable`. We will convert spaces to unicode "no break" spaces which are preserved in the generated Latex code.
+- Additionally, we will add some Latex formatting courtesy of the `kable` and `kableExtra` packages. We will:
+	* produce a caption and a label.
+	* use the Latex `booktabs` package to produce tables with a horizontal line style.
+	* use multiline columns to render the column names.
+	* use multiline columns to produce several groupings of the column names.
+	* request the table to be placed "here".
+
+Here is code to format the data frame and generate code for a Latex table.
+
+```{r, prompt = FALSE, fig.show = "hold"}
+unicode_nbsp = '\u00A0'
+
+dt = head(mtcars, 5) %>%
+	rownames_to_column(var = "car") %>%
+	mutate(car = str_pad(car, width = 20, side = "right", pad = ' ')) %>%
+	mutate(mpg = sprintf(fmt = "%6.2f", mpg)) %>%
+	mutate(cyl = sprintf(fmt = "%3d", cyl)) %>%
+	mutate(disp = sprintf(fmt = "%9.4e", disp)) %>%
+	mutate(hp = sprintf(fmt = "%06.2f", hp)) %>%
+	mutate(car = str_replace_all(car, ' ', unicode_nbsp)) %>%
+	mutate(disp = str_replace_all(disp, ' ', unicode_nbsp)) %>%
+	select(car, mpg, cyl, disp, hp)
+
+out = kable(dt, format = "latex", booktabs = TRUE, linesep = "",
+	col.names = NULL, caption = "My formatted mtcars table.",
+	label = "my_mtcars") %>%
+	kable_styling(latex_options = c("hold_position")) %>%
+	add_header_above(colnames(dt)) %>%
+	add_header_above(c(" " = 1, "P1" = 2, "P2" = 2))
+```
+
+Let us print the generated Latex.
+
+```{r}
+cat(out)
+```
+
+(The above display wanders outside of the document margins as of this writing. You will get the full output when you run it yourself).
+
+Now here is the table after typesetting.
+
+```{r}
+out
+```
+

@@ -1,4 +1,4 @@
-This project currently contains two components:
+This project currently contains several items:
 
 1. A `worker` script that can be used to run a simulation or other large
    study. To use it, organize the simulation into folders. The worker will
@@ -11,6 +11,9 @@ This project currently contains two components:
    `worker`. Folders and launcher scripts are generated for a worker(s) to
    process. Post-processing is carried out on the per-folder results to
    construct a table and prepare output for the entire simulation.
+
+3. A brief document describing one possible way to generate Latex tables from
+   within R.
 
 Python 3.3 or newer is required for `worker`. To begin using it, make sure it
 is executable:
