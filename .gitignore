@@ -42,4 +42,7 @@ vignettes/*.pdf
 /examples/regression-sim/sigma*
 /examples/regression-sim/xmat-n*.rds
 *.Rout
+*.rds
+*.log
+sigma*_n*
 
