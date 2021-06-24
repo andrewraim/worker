@@ -89,7 +89,7 @@ The following scripts are used to implement our workflow for the regression simu
 - `util.R` contains several utility functions used by other scripts.
 - `sim.R` contains the main logic to run one level of the simulation. At the beginning, it checks to ensure that variables `N_sim`, `beta_true`, `sigma_true`, and `xmat_file` have been set. A sleep command is issued after each repetition to give the feeling of a more computationally demanding simulation.
 - `launch.R` is responsible for setting variables specific to the simulation level and running `sim.R`.
-- `worker` is a Python script that seeks simulation levels which have not yet run and attempts to run them.
+- `worker` is a script that seeks out simulation levels which have not yet run and attempts to run them. Two versions are provided in the project repo and have similar functionality. The Bash version (`worker.sh`) is specific to Linux, but requires a fairly minimal environment; it makes use of tools such as `flock` for file locking and the `bc` calculator. The Python version (`worker.py`) is more portable but requires Python 3.3 or higher. The two versions should not be used simultaneously on the same study because they employ different file locking mechanisms.
 - `analyze.R` handles post-processing after the simulation is completed. A table of MSEs is presented as the final result.
 
 All scripts mentioned above, except for `worker`, are specific to this simulation and must be rewritten or customized for other applications.
@@ -124,20 +124,20 @@ It is a good practice to run one launch script manually to verify that our gener
 
 Once we are certain the code and folders are laid out correctly, we will want to use a worker(s) instead of running the study manually. Suppose the path to our generated simulation folders is located at `/path/to/study`.
 
-First make sure the worker script is executable.
+We will demonstrate the Python version of the worker, but use of the Bash version is similar. First make sure the worker script is executable. 
 
 ```bash
-chmod +x /path/to/worker
+$ chmod +x /path/to/worker.py
 ```
 
 The following command invokes one worker.
 
 ```bash
-/path/to/worker -b /path/to/study -p "sigma(.*)_n(.*)" -c 'R CMD BATCH launch.R'
+$ /path/to/worker.py -b /path/to/study -p "sigma(.*)_n(.*)" -c 'R CMD BATCH launch.R'
 ```
 
 - Option `-b` is used to specify one or more paths which contain work folders.
-- Option `-p` is used to specify one or more patterns used to identify work folders (as opposed to other folders which we should ignore).
+- Option `-p` is used to specify one or more patterns used to identify work folders (as opposed to other folders which we should ignore). Arguments are interpreted as Python and Bash patterns in the Python and Bash versions of the worker script, respectively.
 - Multiple paths and patterns may be specified. The count of each should match. The first pattern is considered coupled to the first path, the second pattern coupled to the second path, and so on.
 - Option `-c` specifies a command to run if we find a work folder whose job has not yet been attempted.
 - Use the `-h` flag to display a help message, including the command line format, and quit.
@@ -165,7 +165,7 @@ $ ls sigma2_n1
 launch.R  launch.Rout  results.Rdata  worker.err  worker.lock  worker.out
 ```
 
-The files `worker.out` and `worker.err` capture any output from stdout and stderr while running the job. The file `worker.lock` is placed as a marker to indicate that a job has been reserved by a worker. Only one worker may create this file. Furthermore, the worker who creates the file may only run the job immediately after creating it. When encountered afterward, the job is considered to have been reserved, whether it completed or not, and will be skipped. If a job has failed and you would like a worker to consider it again, delete the corresponding `worker.lock`.
+The files `worker.out` and `worker.err` capture any output from stdout and stderr while running the job. The file `worker.lock` is placed as a marker to indicate that a job has been reserved by a worker. Only one worker may create this file, and only upon successful creation does the worker attempt to execute the job. If a job has failed and you would like it to be attempted again, delete the corresponding `worker.lock`.
 
 The file `worker.lock` contains the ID of the worker that reserved it. This can be linked back to the `Worker ID` reported in the log output, which may help if it is necessary to determine which worker ran a job.
 
@@ -174,7 +174,16 @@ $ cat sigma2_n1/worker.lock
 Reserved by worker: 75e1421210cc92d62e5403313cab33f0
 ```
 
-When working on a remote server, it may not be possible to keep a persistent session open for long periods that may be needed for a simulation study. In a setting where a scheduler such as [PBS](https://www.openpbs.org) or [Slurm](https://slurm.schedmd.com) is used to allocate jobs to compute nodes, each worker may be submitted as a job to the scheduler. Example PBS and Slurm submission scripts are provided for this example in the files `worker.qsub` and `worker.slurm`.
+When working on a remote server, it may not be possible to keep a persistent session open for long periods that may be needed for a simulation study. In a setting where a scheduler such as [PBS](https://www.openpbs.org) or [Slurm](https://slurm.schedmd.com) is used to allocate jobs to compute nodes, each worker may be submitted as a job to the scheduler. Example PBS and Slurm submission scripts are provided for this example in the files `worker.qsub` and `worker.slurm`. We can launch several workers through PBS, for example, using the following.
+
+```bash
+$ qsub worker.qsub
+100000.localhost
+$ qsub worker.qsub
+100001.localhost
+$ qsub worker.qsub
+100002.localhost
+```
 
 In an environment without a scheduler, running workers via a terminal multiplexer such as [tmux](https://tmux.github.io) or [GNU screen](https://www.gnu.org/software/screen) allows terminal sessions to detach and reattach as needed to provide some persistence.
 

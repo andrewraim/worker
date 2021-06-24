@@ -3,7 +3,7 @@
 source("../util.R")
 
 set.seed(1234)
-rep_sleep_sec = 1
+rep_sleep_sec = 0.01
 
 # ----- Check for arguments set by the launch script -----
 stopifnot(exists("beta_true"))

@@ -14,6 +14,8 @@ PROGNAME = os.path.basename(sys.argv[0])
 VERSION = "%s v0.2.1" % PROGNAME
 
 USAGE = """
+Python version of worker utility
+
 worker is a tool to help automate repetitive computational studies. It loops
 through a list of paths and searches for subdirectories whose names match a
 given pattern. For each matching subdirectory, it changes to the directory and

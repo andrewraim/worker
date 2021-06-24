@@ -4,6 +4,5 @@
 #SBATCH --error=slurm.err
 
 # Example of launching a worker through Slurm
-
-../src/worker -b . -p "sigma(.*)_n(.*)" -c 'R CMD BATCH launch.R'
+../src/worker.py -b . -p "sigma(.*)_n(.*)" -c 'R CMD BATCH launch.R'
 
