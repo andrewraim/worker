@@ -7,59 +7,52 @@ import time
 import platform
 import logging
 import subprocess
-import re
+import glob
 from datetime import datetime
 
 PROGNAME = os.path.basename(sys.argv[0])
-VERSION = "%s v0.2.1" % PROGNAME
+VERSION = "%s v0.3.0" % PROGNAME
 
 USAGE = """
 Python version of worker utility
 
-worker is a tool to help automate repetitive computational studies. It loops
-through a list of paths and searches for subdirectories whose names match a
-given pattern. For each matching subdirectory, it changes to the directory and
-runs a specified command (`cmd`).
-- Paths are specified by one or more `basepaths`.
-- Patterns are specified by one or more `patterns`.
-- The number of `basepaths` and `patterns` should be equal.
-- The 1st pattern is associated with the 1st path, the 2nd pattern with the 2nd
-  path, and so on.
-- `basepaths` are not traversed recursively; only searched at the top level.
+A tool to help automate repetitive computational studies. It assumes the study
+is organized with each job in its own folder. The worker identifies relevant
+folders through one or more specified `pattern` arguments. For each matching
+folder, it changes to the folder and runs a specified command (`cmd`).
 
-Before running a job, worker must create a file `worker.lock` in that directory
-to claim responsibility for it. If the lock is successfully created, worker
-immediately attempts to run the job. The command `cmd` is executed as a
-blocking call so that jobs from one worker are run sequentially. Once the
-command finishes, worker resumes searching for other jobs without a
-`worker.lock` file. Aside from reserving and running jobs, worker has minimal
-knowledge of their content and does not distinguish between successful and
-failed runs.
+Before running a job, worker must create a file `worker.lock` in the associated
+folder to claim responsibility for it. If the lock can be successfully created,
+the worker immediately attempts to run the job. The worker runs the job using
+the command `cmd` and does nothing further until it completes. Therefore, jobs
+from run sequentially from the perspective of one worker. Once the `cmd command
+finishes, the worker resumes searching for more jobs without a `worker.lock`
+file. Aside from reserving and running jobs, the worker has minimal knowledge
+of the content of the jobs and cannot distinguish between successful and failed
+runs.
 
-worker continues to search for jobs in a loop until a complete pass is made
-without finding any new jobs to run. This allows you to modify its workload
+The worker continues to search for jobs in a loop until a complete pass is made
+without finding any new jobs to run. This allows a user to modify its workload
 without a need to restart it:
-- add a job by creating a directory that matches `basepaths` and `patterns`.
-- remove a job by placing a `worker.lock` file in the directory.
+- add a job by creating a folder that matches one of the `pattern` arguments.
+- remove a job by placing a `worker.lock` file in the folder.
 - rerun a job by deleting its `worker.lock` file.
 
-Multiple workers may run on the same set of `basepaths` and `patterns` to
-process job directories in parallel. Race conditions are avoided via
-`worker.lock`, which is created using  exclusive "x" file access mode. Only the
-worker that successfully creates the file may claim responsibility for the job.
-Exclusive file creation requires Python 3.3 or higher.
+Multiple workers may be run on the same set of `pattern` arguments to achieve
+parallel processing. Race conditions are avoided via the `worker.lock` file,
+which is created using exclusive "x" file access mode. Only the worker which
+successfully creates the file may claim responsibility for the job. Exclusive
+file creation requires Python 3.3 or higher.
 
-'patterns' are strings interpreted as Python Regular Expressions. See the
-syntax at <https://docs.python.org/3/library/re.html>. When passing a `pattern`
-argument, you may need to protect it from being expanded by your shell. For
-example, in bash, wrap the pattern with single quotes.
+A 'pattern' is interpreted as a Python glob, which is similar to the syntax in
+the Unix shell. See <https://docs.python.org/3/library/glob.html>.  When
+passing a `pattern` argument, you may need to protect it from being expanded by
+your shell. For example, in Bash, wrap the pattern with single quotes.
 
-Usage: %s [-v] [-h] | -b <path> [-b <path2> ...] -p <pattern>
-           [-p <pattern2> ...] -c <cmd> [--maxjobs=<maxjobs>]
-           [--maxhours=<maxhours>] [--label=<label>]
+Usage: %s [-v] [-h] -p <pattern> [-p <pattern2> ...] -c <cmd>
+           [--maxjobs=<maxjobs>] [--maxhours=<maxhours>] [--label=<label>]
 	-v or --version   print the version and exit
 	-h or --help      print usage and exit
-	-b or --basepath  include path in the list of basepaths
 	-p or --pattern   include pattern in the list of patterns
 	-c or --cmd       command to launch each job
 	--maxjobs         max # of jobs to run (default: unlimited)
@@ -68,18 +61,17 @@ Usage: %s [-v] [-h] | -b <path> [-b <path2> ...] -p <pattern>
 """ % PROGNAME
 
 # ---- Begin parsing command line args -----
-basepaths = []
 patterns = []
 cmd = []
 max_jobs = sys.maxsize
 max_hours = float('inf')
-label =  "worker"
+label = "worker"
 
-longopts = ["version", "help", "basepath=", "pattern=", "cmd=", "maxjobs=",
+longopts = ["version", "help", "pattern=", "cmd=", "maxjobs=",
 	"maxhours=", "label="]
 options, arguments = getopt.getopt(
 	sys.argv[1:], # Arguments
-	'vhb:p:c:',   # Short option definitions
+	'vh:p:c:',   # Short option definitions
 	longopts)     # Long option definitions
 for o, a in options:
 	if o in ("-v", "--version"):
@@ -89,8 +81,6 @@ for o, a in options:
 		print(VERSION)
 		print(USAGE)
 		sys.exit()
-	if o in ("-b", "--basepath"):
-		basepaths.append(a)
 	if o in ("-p", "--pattern"):
 		patterns.append(a)
 	if o in ("-c", "--cmd"):
@@ -109,9 +99,6 @@ try:
 	operands = [int(arg) for arg in arguments]
 except ValueError:
 	raise SystemExit(USAGE)
-if len(basepaths) == 0:
-	print("Must provide at least one basepath. Use -h for help")
-	exit(1)
 if len(patterns) == 0:
 	print("Must provide at least one pattern. Use -h for help")
 	exit(1)
@@ -139,14 +126,10 @@ worker_id = result.hexdigest()
 logging.info("Worker ID: %s" % worker_id)
 
 # Get the current working directory
-homepath = os.getcwd()
-logging.info("Home path: %s" % homepath)
+cwd = os.getcwd()
+logging.info("Working directory: %s" % cwd)
 
-# Throw an exception if L != len(patterns)
-L = len(basepaths)
-if L != len(patterns):
-	msg = "Length %d of basepaths is not equal to length %d of patterns"
-	raise RuntimeError(msg % (L, len(patterns)))
+L = len(patterns)
 
 keep_looping = True
 processed_jobs = 0
@@ -157,27 +140,22 @@ while keep_looping:
 	# work. This allows the user to add, remove, or rerun jobs without having to
 	# restart a running worker.
 	keep_looping = False
-	logging.info("Searching %d basepaths for available work" % L)
+	logging.info("Searching %d patterns for available work" % L)
 
 	for i in range(L):
-		basepath = basepaths[i]
 		pattern = patterns[i]
+		logging.info("Searching pattern[%d]: %s" % (i, pattern))
 
-		logging.info("Basepath[%d]: %s  Pattern: %s" % (i, basepath, pattern))
-
-		for subdir in os.listdir(basepath):
+		# Interpret the pattern as a glob to search for relevant files
+		for entry in glob.glob(pattern):
 			# Ignore entries that are not directories
-			if not os.path.isdir(subdir):
+			if not os.path.isdir(entry):
+				logging.info("Entry %s is not a folder, ignoring" % entry)
 				continue
-
-			# Ignore entries that don't match the pattern
-			match = re.search(pattern, subdir)
-			if not match:
-				continue
+			subdir = entry
 
 			# Workers coordinate through the existence of this lockfile
-			lockfile = os.path.join(basepath, subdir + os.path.sep +
-				"%s.lock" % label)
+			lockfile = os.path.join(subdir + os.path.sep + "%s.lock" % label)
 
 			# Check if the lockfile exists. If so, we can ignore this folder
 			if os.path.isfile(lockfile):
@@ -203,8 +181,7 @@ while keep_looping:
 				logging.info("Lockfile in %s acquired" % subdir)
 
 				# Now change to the directory of the job
-				path = os.path.join(basepath, subdir)
-				os.chdir(path)
+				os.chdir(subdir)
 
 				# Run the job. Make sure to save stdout and stderr steams
 				with open("%s.out" % label, 'w') as g, open("%s.err" % label, 'w') as h:
@@ -213,8 +190,8 @@ while keep_looping:
 				# Increment the number of jobs we have processed
 				processed_jobs += 1
 
-				# Change back to the home path
-				os.chdir(homepath)
+				# Change back to the original current working directory
+				os.chdir(cwd)
 
 			elapsed_hours = (datetime.now() - start_time).total_seconds() / 60**2
 			logging.info("Processed %d jobs and worked for %f total hours so far" %

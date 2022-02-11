@@ -12,7 +12,7 @@
 
 
 PROGNAME=$(basename $0)
-VERSION="$PROGNAME v0.1.0"
+VERSION="$PROGNAME v0.2.0"
 
 # Function to get timestamp
 ts() {
@@ -30,52 +30,45 @@ function usage() {
 cat <<EOF
 Bash version of worker utility
 
-worker is a tool to help automate repetitive computational studies. It loops
-through a list of paths and searches for subdirectories whose names match a
-given pattern. For each matching subdirectory, it changes to the directory and
-runs a specified command ('cmd').
-- Paths are specified by one or more 'basepaths'.
-- Patterns are specified by one or more 'patterns'.
-- The number of 'basepaths' and 'patterns' should be equal.
-- The 1st pattern is associated with the 1st path, the 2nd pattern with the 2nd
-  path, and so on.
-- 'basepaths' are not traversed recursively; only searched at the top level.
+A tool to help automate repetitive computational studies. It assumes the study
+is organized with each job in its own folder. The worker identifies relevant
+folders through one or more specified 'pattern' arguments. For each matching
+folder, it changes to the folder and runs a specified command ('cmd').
 
-Before running a job, worker must create a file 'worker.lock' in that directory
-to claim responsibility for it. If the lock is successfully created, worker
-immediately attempts to run the job. The command 'cmd' is executed as a
-blocking call so that jobs from one worker are run sequentially. Once the
-command finishes, worker resumes searching for other jobs without a
-'worker.lock' file. Aside from reserving and running jobs, worker has minimal
-knowledge of their content and does not distinguish between successful and
-failed runs.
+Before running a job, worker must create a file 'worker.lock' in the associated
+folder to claim responsibility for it. If the lock can be successfully created,
+the worker immediately attempts to run the job. The worker runs the job using
+the command 'cmd' and does nothing further until it completes. Therefore, jobs
+from run sequentially from the perspective of one worker. Once the 'cmd' command
+finishes, the worker resumes searching for more jobs without a 'worker.lock'
+file. Aside from reserving and running jobs, the worker has minimal knowledge
+of the content of the jobs and cannot distinguish between successful and failed
+runs.
 
-worker continues to search for jobs in a loop until a complete pass is made
-without finding any new jobs to run. This allows you to modify its workload
+The worker continues to search for jobs in a loop until a complete pass is made
+without finding any new jobs to run. This allows a user to modify its workload
 without a need to restart it:
-- add a job by creating a directory that matches 'basepaths' and 'patterns'.
-- remove a job by placing a 'worker.lock' file in the directory.
+- add a job by creating a folder that matches one of the 'pattern' arguments.
+- remove a job by placing a 'worker.lock' file in the folder.
 - rerun a job by deleting its 'worker.lock' file.
 
-Multiple workers may run on the same set of 'basepaths' and 'patterns' to
-process job directories in parallel. Race conditions are avoided via
-'worker.lock', which is acquired exclusively with the flock command. A worker
-may only claim responsibility for a job if it (1) finds that 'worker.lock' does
-not yet exist, and (2) lock it for writing. The lock is released once the job
-has been executed.
+Multiple workers may run on the same set of 'pattern' arguments to achieve
+parallel processing. Race conditions are avoided via the 'worker.lock' file,
+which is acquired exclusively with the flock command. A worker may only claim
+responsibility for a job if it (1) finds that 'worker.lock' does not yet exist,
+and (2) lock it for writing. The lock is released once the job has been
+executed.
 
-'patterns' are strings interpreted as Bash patterns. E.g., see the syntax at 
+A 'pattern' is interpreted as a Bash pattern. E.g., see the syntax at
 <https://www.linuxjournal.com/content/pattern-matching-bash>. When passing a
 'pattern' argument, you may need to protect it from being expanded by your
 shell. In bash, this can be accomplished by wrapping the pattern with single
 quotes.
 
-Usage: $PROGNAME [-v] [-h] | -b <path> [-b <path2> ...] -p <pattern>
-           [-p <pattern2> ...] -c <cmd> [--maxjobs=<maxjobs>]
-           [--maxhours=<maxhours>] [--label=<label>]
+Usage: $PROGNAME [-v] [-h] -p <pattern> [-p <pattern2> ...] -c <cmd>
+           [--maxjobs=<maxjobs>] [--maxhours=<maxhours>] [--label=<label>]
 	-v or --version   print the version and exit
 	-h or --help      print usage and exit
-	-b or --basepath  include path in the list of basepaths
 	-p or --pattern   include pattern in the list of patterns
 	-c or --cmd       command to launch each job
 	--maxjobs         max # of jobs to run (default: unlimited)
@@ -85,14 +78,13 @@ EOF
 }
 
 # ---- Begin parsing command line args -----
-basepaths=()
 patterns=()
 ((max_jobs=2**32))
 ((max_hours=2**32))
 label="worker"
 
 # Call getopt to validate the command line
-options=$(getopt -o vhb:p:c: --long version --long help --long basepath: \
+options=$(getopt -o vh:p:c: --long version --long help \
 	--long pattern: --long cmd: --long maxjobs: --long maxhours: \
 	--long label: -- "$@")
 [ $? -eq 0 ] || { 
@@ -117,19 +109,13 @@ while true; do
 		usage
 		exit 0
 		;;
-	-b)
-		;&
-	--basepath)
-		# Push new path to basepaths array
-		shift;
-		basepaths+=($1)
-		;;
 	-p)
 		;&
 	--pattern)
-		# Push new pattern to patterns array
+		# Push new pattern to patterns array.
+		# Quotes are on $1 so that the pattern will not be expanded yet.
 		shift;
-		patterns+=($1)
+		patterns+=("$1")
 		;;
 	-c)
 		;&
@@ -157,26 +143,15 @@ while true; do
 	shift
 done
 
-L=${#basepaths[@]}
-P=${#patterns[@]}
+L=${#patterns[@]}
 
 if [ $L -eq 0 ]; then
-	echo "Must provide at least one basepath. Use -h for help"
-	exit 1
-fi
-
-if [ $P -eq 0 ]; then
 	echo "Must provide at least one pattern. Use -h for help"
 	exit 1
 fi
 
 if [ -z ${cmd+x} ]; then
 	echo "Must provide a command. Use -h for help"
-	exit 1
-fi
-
-if [ $L != $P ]; then
-	echo "Length of basepaths $L is not equal to length of patterns $P"
 	exit 1
 fi
 
@@ -192,8 +167,8 @@ worker_id=$($str2hash | md5sum | cut -f1 -d' ')
 logger "Worker ID: $worker_id"
 
 # Get the current working directory
-homepath=$PWD
-logger "Home path: $homepath"
+cwd=$PWD
+logger "Working directory: $cwd"
 
 processed_jobs=0
 keep_looping=true
@@ -205,28 +180,24 @@ do
 	# work. This allows the user to add, remove, or rerun jobs without having to
 	# restart a running worker.
 	keep_looping=false
-	logger "Searching $L basepaths for available work"
+	logger "Searching $L patterns for available work"
 
 	for (( i=0; i < ${L}; i++ ))
 	do
-		basepath=${basepaths[$i]}
 		pattern=${patterns[$i]}
-		logger "Basepath[$i]: $basepath  Pattern: $pattern"
+		logger "Searching Pattern[$i]: $pattern"
 
-		for subdir in $(ls $basepath)
+		for entry in $(ls -d $pattern)
 		do
 			# Ignore entries that are not directories
-			if [ ! -d "$basepath/$subdir" ]; then
+			if [ ! -d $entry ]; then
+				logger "Entry $entry is not a folder, ignoring"
 				continue
 			fi
-
-			# Ignore entries that don't match the pattern
-			if [[ ! $subdir == $pattern ]]; then
-				continue
-			fi
+			subdir=$entry
 
 			# Workers coordinate through the existence of this lockfile
-			lockfile="${basepath}/${subdir}/${label}.lock"
+			lockfile="${subdir}/${label}.lock"
 
 			# Check if the lockfile exists. If so, we can ignore this folder
 			if [ -f $lockfile ]; then
@@ -253,7 +224,7 @@ do
 				logger "Lockfile in $subdir acquired"
 
 				# Change to the directory of the job
-				cd "${basepath}/${subdir}"
+				cd ${subdir}
 
 				# Run the job. Make sure to save stdout and stderr steams
 				$cmd 1>${label}.out 2>${label}.err
@@ -262,7 +233,7 @@ do
 				((processed_jobs++))
 
 				# Change back to the home path
-				cd $homepath
+				cd $cwd
 
 				# Release the lock
 				flock --unlock --nonblock 100
