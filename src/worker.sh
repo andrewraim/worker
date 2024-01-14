@@ -163,7 +163,7 @@ elapsed_hours=0
 # Create a hash that represents a (somewhat) unique ID for this run
 # Use hostname with time appended
 str2hash="$(hostname)$(date +'%s.%N')"
-worker_id=$($str2hash | md5sum | cut -f1 -d' ')
+worker_id=$(echo $str2hash | md5sum | cut -f1 -d' ')
 logger "Worker ID: $worker_id"
 
 # Get the current working directory
