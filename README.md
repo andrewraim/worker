@@ -1,3 +1,4 @@
+# Description
 This project contains a worker script that can be used to run a simulation or
 other repetitive studies. To use it, organize your study into folders so that
 each folder represents one "job". The worker will traverse your specified
@@ -32,4 +33,14 @@ process. Post-processing is then carried out on the per-folder results to
 construct a table and prepare output for the entire simulation. See the
 `example` folder for the example code and the `doc` folder for a brief document
 explaining how it works.
+
+# Installation
+
+It is recommended to make the scripts executable when deploying them. For
+example, in Linux:
+
+```bash
+$ chmod +x worker.py
+$ chmod +x worker.sh
+```
 
