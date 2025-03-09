@@ -16,11 +16,11 @@ jobs at once, we can launch 10 workers to complete our study.
 
 There are two versions of the worker script.
 
-1. A Bash version (`worker.sh`) is specific to Linux, but requires a fairly
-   minimal environment; it makes use of `flock` for file locking and the `bc`
+1. A Bash version `worker.sh` is specific to Linux, but prerequisites are
+   fairly minimal; it makes use of `flock` for file locking and the `bc`
    calculator.
 
-2. A Python version (`worker.py`) is more portable but requires Python 3.3 or
+2. A Python version `worker.py` is more portable but requires Python 3.3 or
    higher. It uses the exclusive file creation mode in `open` to accomplish
    locking.
 
