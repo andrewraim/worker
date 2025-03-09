@@ -8,4 +8,7 @@
 # Example of launching a worker through PBS
 cd $PBS_O_WORKDIR
 
+# Ensure one core per R process
+export OMP_NUM_THREADS=1
+
 ../src/worker.py -p 'sigma*_n*' -c 'R CMD BATCH launch.R'
