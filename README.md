@@ -1,8 +1,8 @@
 # Description
 This project contains a worker script that can be used to run a simulation or
 other repetitive studies. To use it, organize your study into folders so that
-each folder represents one "job". The worker will traverse your specified
-folders and execute a specified command in each folder to run the job. This
+each folder represents one "task". The worker will traverse your specified
+folders and execute a specified command in each folder to run the task. This
 process will repeat until the study is complete.
 
 Multiple workers can be run simultaneously to achieve "embarrassingly parallel"
@@ -48,11 +48,12 @@ $ chmod +x worker.sh
 
 Some programs attempt to use multiple cores when they are available. While this
 is normally beneficial on standalone workstations, it can cause complications
-when we have been strictly allocated a fixed number of cores. For example,
-suppose we have been allocated 16 cores by a scheduler on a shared system and
-wish to run 16 simultaneous tasks using 16 workers; if one of the tasks
-attempts to use additional cores here, the scheduler may detect the use of
-extra resources and halt the entire job.
+when we have been strictly allocated a fixed number of cores.
+
+For example, suppose we have been allocated 16 cores in a job by a scheduler on
+a shared system and wish to run 16 simultaneous tasks using 16 workers; if one
+of the tasks attempts to use additional cores here, the scheduler may detect
+the use of extra resources and halt the entire job.
 
 R is one program that may do this, depending on the way it has been configured.
 The behavior appears to be controllable through OpenMP, as discussed in the
