@@ -44,3 +44,24 @@ $ chmod +x worker.py
 $ chmod +x worker.sh
 ```
 
+# Number of CPUs Used by R
+
+Some programs attempt to use multiple cores when they are available. While this
+is normally beneficial on standalone workstations, it can cause complications
+when we have been strictly allocated a fixed number of cores. For example,
+suppose we have been allocated 16 cores by a scheduler on a shared system and
+wish to run 16 simultaneous tasks using 16 workers; if one of the tasks
+attempts to use additional cores here, the scheduler may detect the use of
+extra resources and halt the entire job.
+
+R is one program that may do this, depending on the way it has been configured.
+The behavior appears to be controllable through OpenMP, as discussed in the
+following [thread][stackoverflow]. Setting the following environment variable
+appears to restrict R to a single thread.
+
+```
+export OMP_NUM_THREADS=1
+```
+
+[stackoverflow]: https://stackoverflow.com/q/57109522
+
