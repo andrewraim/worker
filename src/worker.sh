@@ -28,8 +28,6 @@ logger() {
 # Function to print the usage
 function usage() {
 cat <<EOF
-Bash version of worker utility
-
 A tool to help automate repetitive computational studies. It assumes the study
 is organized with each job in its own folder. The worker identifies relevant
 folders through one or more specified 'pattern' arguments. For each matching
@@ -48,6 +46,7 @@ runs.
 The worker continues to search for jobs in a loop until a complete pass is made
 without finding any new jobs to run. This allows a user to modify its workload
 without a need to restart it:
+
 - add a job by creating a folder that matches one of the 'pattern' arguments.
 - remove a job by placing a 'worker.lock' file in the folder.
 - rerun a job by deleting its 'worker.lock' file.
@@ -65,15 +64,17 @@ A 'pattern' is interpreted as a Bash pattern. E.g., see the syntax at
 shell. In bash, this can be accomplished by wrapping the pattern with single
 quotes.
 
-Usage: $PROGNAME [-v] [-h] -p <pattern> [-p <pattern2> ...] -c <cmd>
-           [--maxjobs=<maxjobs>] [--maxhours=<maxhours>] [--label=<label>]
-	-v or --version   print the version and exit
-	-h or --help      print usage and exit
-	-p or --pattern   include pattern in the list of patterns
-	-c or --cmd       command to launch each job
-	--maxjobs         max # of jobs to run (default: unlimited)
-	--maxhours        max # of hours to run, can be floating point (default: unlimited)
-	--label           prefix to use for lock files and log file names (default: worker)
+USAGE
+$PROGNAME [-v] [-h] -p <pattern> [-p <pattern2> ...] -c <cmd>
+    [--maxjobs=<maxjobs>] [--maxhours=<maxhours>] [--label=<label>]
+
+    -v or --version   print the version and exit
+    -h or --help      print usage and exit
+    -p or --pattern   include pattern in the list of patterns
+    -c or --cmd       command to launch each job
+    --maxjobs         max # of jobs to run (default: unlimited)
+    --maxhours        max # of hours to run, can be floating point (default: unlimited)
+    --label           prefix to use for lock files and log file names (default: worker)
 EOF
 }
 
@@ -84,7 +85,7 @@ patterns=()
 label="worker"
 
 # Call getopt to validate the command line
-options=$(getopt -o vh:p:c: --long version --long help \
+options=$(getopt -o vhp:c: --long version --long help \
 	--long pattern: --long cmd: --long maxjobs: --long maxhours: \
 	--long label: -- "$@")
 [ $? -eq 0 ] || { 
