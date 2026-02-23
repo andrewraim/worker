@@ -12,7 +12,7 @@
 
 
 PROGNAME=$(basename $0)
-VERSION="$PROGNAME v0.2.0"
+VERSION="$PROGNAME v0.2.1"
 
 # Function to get timestamp
 ts() {

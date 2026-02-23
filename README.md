@@ -51,8 +51,8 @@ In Linux, a suggested location for non-root users on a typical system is
 `$HOME/.local/bin`.
 
 ```bash
-$ cp src/worker.py $HOME/.local/bin/
-$ cp src/worker.sh $HOME/.local/bin/
+$ cp worker.py $HOME/.local/bin/
+$ cp worker.sh $HOME/.local/bin/
 $ chmod +x worker.py
 $ chmod +x worker.sh
 $ export PATH=$PATH:$HOME/.local/bin

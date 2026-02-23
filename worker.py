@@ -11,20 +11,22 @@ import glob
 from datetime import datetime
 
 PROGNAME = os.path.basename(sys.argv[0])
-VERSION = "%s v0.3.0" % PROGNAME
+VERSION = "%s v0.3.1" % PROGNAME
 
-USAGE = """
+USAGE = """\
 A tool to automate repetitive computational studies.
 
-Usage: %s [-v] [-h] -p <pattern> [-p <pattern2> ...] -c <cmd>
-           [--maxjobs=<maxjobs>] [--maxhours=<maxhours>] [--label=<label>]
-	-v or --version   print the version and exit
-	-h or --help      print usage and exit
-	-p or --pattern   include pattern in the list of patterns
-	-c or --cmd       command to launch each job
-	--maxjobs         max # of jobs to run (default: unlimited)
-	--maxhours        max # of hours to run, can be floating point (default: unlimited)
-	--label           prefix to use for lock file and log file names (default: worker)
+USAGE
+%s [-v] [-h] -p <pattern> [-p <pattern2> ...] -c <cmd>
+    [--maxjobs=<maxjobs>] [--maxhours=<maxhours>] [--label=<label>]
+
+-v or --version   print the version and exit
+-h or --help      print usage and exit
+-p or --pattern   include pattern in the list of patterns
+-c or --cmd       command to launch each job
+--maxjobs         max # of jobs to run (default: unlimited)
+--maxhours        max # of hours to run, can be floating point (default: unlimited)
+--label           prefix to use for lock file and log file names (default: worker)\
 """ % PROGNAME
 
 # ---- Begin parsing command line args -----
@@ -38,7 +40,7 @@ longopts = ["version", "help", "pattern=", "cmd=", "maxjobs=",
 	"maxhours=", "label="]
 options, arguments = getopt.getopt(
 	sys.argv[1:], # Arguments
-	'vh:p:c:',   # Short option definitions
+	'vhp:c:',     # Short option definitions
 	longopts)     # Long option definitions
 for o, a in options:
 	if o in ("-v", "--version"):
