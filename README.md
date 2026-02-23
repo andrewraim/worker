@@ -24,6 +24,25 @@ config.json  driver.R
 The worker identifies a task which has not yet been processed, executes a
 specified command to run it, and repeats until all tasks are complete.
 
+```bash
+$ worker.sh -p 'task???' -c 'R CMD BATCH driver.R'
+2026-02-23 08:47:46 - Worker ID: a042061b78b0a15c1b369c90f577a6f2
+2026-02-23 08:47:46 - Working directory: /home/andrew/sim
+2026-02-23 08:47:46 - Searching 1 patterns for available work
+2026-02-23 08:47:46 - Searching Pattern[0]: task???
+2026-02-23 08:47:47 - Lockfile in task001 acquired
+2026-02-23 08:47:48 - Processed 1 jobs and worked for 0 total hours so far
+...
+2026-02-23 08:47:52 - Lockfile in task999 acquired
+2026-02-23 08:47:53 - Processed 999 jobs and worked for 2 total hours so far
+2026-02-23 08:47:53 - Searching 1 patterns for available work
+2026-02-23 08:47:53 - Searching Pattern[0]: task???
+2026-02-23 08:47:53 - Lockfile in task001 exists, skipping
+...
+2026-02-23 08:47:53 - Lockfile in task999 exists, skipping
+2026-02-23 08:47:53 - Done
+```
+
 Multiple workers can be run simultaneously to achieve "embarrassingly parallel"
 parallel computing. They coordinate so that each task is handled by at most
 one worker.
