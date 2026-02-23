@@ -14,40 +14,7 @@ PROGNAME = os.path.basename(sys.argv[0])
 VERSION = "%s v0.3.0" % PROGNAME
 
 USAGE = """
-Python version of worker utility
-
-A tool to help automate repetitive computational studies. It assumes the study
-is organized with each job in its own folder. The worker identifies relevant
-folders through one or more specified `pattern` arguments. For each matching
-folder, it changes to the folder and runs a specified command (`cmd`).
-
-Before running a job, worker must create a file `worker.lock` in the associated
-folder to claim responsibility for it. If the lock can be successfully created,
-the worker immediately attempts to run the job. The worker runs the job using
-the command `cmd` and does nothing further until it completes. Therefore, jobs
-from run sequentially from the perspective of one worker. Once the `cmd command
-finishes, the worker resumes searching for more jobs without a `worker.lock`
-file. Aside from reserving and running jobs, the worker has minimal knowledge
-of the content of the jobs and cannot distinguish between successful and failed
-runs.
-
-The worker continues to search for jobs in a loop until a complete pass is made
-without finding any new jobs to run. This allows a user to modify its workload
-without a need to restart it:
-- add a job by creating a folder that matches one of the `pattern` arguments.
-- remove a job by placing a `worker.lock` file in the folder.
-- rerun a job by deleting its `worker.lock` file.
-
-Multiple workers may be run on the same set of `pattern` arguments to achieve
-parallel processing. Race conditions are avoided via the `worker.lock` file,
-which is created using exclusive "x" file access mode. Only the worker which
-successfully creates the file may claim responsibility for the job. Exclusive
-file creation requires Python 3.3 or higher.
-
-A 'pattern' is interpreted as a Python glob, which is similar to the syntax in
-the Unix shell. See <https://docs.python.org/3/library/glob.html>.  When
-passing a `pattern` argument, you may need to protect it from being expanded by
-your shell. For example, in Bash, wrap the pattern with single quotes.
+A tool to automate repetitive computational studies.
 
 Usage: %s [-v] [-h] -p <pattern> [-p <pattern2> ...] -c <cmd>
            [--maxjobs=<maxjobs>] [--maxhours=<maxhours>] [--label=<label>]
