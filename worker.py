@@ -14,19 +14,16 @@ PROGNAME = os.path.basename(sys.argv[0])
 VERSION = "%s v0.3.1" % PROGNAME
 
 USAGE = """\
-A tool to automate repetitive computational studies.
+usage: %s [-v] [-h] -p <pattern> [-p <pattern2> ...] -c <cmd>
+  [--maxjobs=<maxjobs>] [--maxhours=<maxhours>] [--label=<label>]
 
-USAGE
-%s [-v] [-h] -p <pattern> [-p <pattern2> ...] -c <cmd>
-    [--maxjobs=<maxjobs>] [--maxhours=<maxhours>] [--label=<label>]
-
--v or --version   print the version and exit
--h or --help      print usage and exit
--p or --pattern   include pattern in the list of patterns
--c or --cmd       command to launch each job
---maxjobs         max # of jobs to run (default: unlimited)
---maxhours        max # of hours to run, can be floating point (default: unlimited)
---label           prefix to use for lock file and log file names (default: worker)\
+  -v or --version   Print the version
+  -h or --help      Print usage
+  -p or --pattern   Include pattern in the list of patterns
+  -c or --cmd       Command to launch each job
+  --maxjobs         Max # of jobs to run (default: unlimited)
+  --maxhours        Max # of hours to run, can be floating point (default: unlimited)
+  --label           Prefix to use for lock file and log file names (default: worker)\
 """ % PROGNAME
 
 # ---- Begin parsing command line args -----
@@ -47,7 +44,6 @@ for o, a in options:
 		print(VERSION)
 		sys.exit()
 	if o in ("-h", "--help"):
-		print(VERSION)
 		print(USAGE)
 		sys.exit()
 	if o in ("-p", "--pattern"):

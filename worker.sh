@@ -14,11 +14,6 @@
 PROGNAME=$(basename $0)
 VERSION="$PROGNAME v0.2.1"
 
-# Function to get timestamp
-ts() {
-	echo $(date +'%Y-%m-%d %H:%M:%S')
-}
-
 # Function to log a message with a timestamp
 logger() {
 	ts=$(date +'%Y-%m-%d %H:%M:%S')
@@ -28,19 +23,16 @@ logger() {
 # Function to print the usage
 function usage() {
 cat <<EOF
-A tool to automate repetitive computational studies. 
+usage: $PROGNAME [-v] [-h] -p <pattern> [-p <pattern2> ...] -c <cmd>
+  [--maxjobs=<maxjobs>] [--maxhours=<maxhours>] [--label=<label>]
 
-USAGE
-$PROGNAME [-v] [-h] -p <pattern> [-p <pattern2> ...] -c <cmd>
-    [--maxjobs=<maxjobs>] [--maxhours=<maxhours>] [--label=<label>]
-
-    -v or --version   print the version and exit
-    -h or --help      print usage and exit
-    -p or --pattern   include pattern in the list of patterns
-    -c or --cmd       command to launch each job
-    --maxjobs         max # of jobs to run (default: unlimited)
-    --maxhours        max # of hours to run, can be floating point (default: unlimited)
-    --label           prefix to use for lock files and log file names (default: worker)
+  -v or --version   Print the version
+  -h or --help      Print usage
+  -p or --pattern   Include pattern in the list of patterns
+  -c or --cmd       Command to launch each job
+  --maxjobs         Max # of jobs to run (default: unlimited)
+  --maxhours        Max # of hours to run, can be floating point (default: unlimited)
+  --label           Prefix to use for lock files and log file names (default: worker)
 EOF
 }
 
@@ -72,7 +64,6 @@ while true; do
 	-h)
 		;&
 	--help)
-		echo "$VERSION"
 		usage
 		exit 0
 		;;
